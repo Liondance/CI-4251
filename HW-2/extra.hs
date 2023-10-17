@@ -40,7 +40,7 @@ box'muller u1 u2 = (0.0, 0.0) -- replace with your magic here
 
 -}
 
-logz :: Double -> Double -> (Double, Double)
+logz :: Double -> Double -> Double
 logz _ _ = (0, 0)
 
 
