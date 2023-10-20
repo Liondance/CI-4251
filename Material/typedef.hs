@@ -163,6 +163,4 @@ eval (Eq lhs rhs) = (eval lhs) == (eval rhs)
 
         c.2 evalue 'eval (exp3 x y z)' para todas la combinaciones de valores de 'x' y 'y'
 
-    e) Implementar un probador de tautologias
-
 -}
