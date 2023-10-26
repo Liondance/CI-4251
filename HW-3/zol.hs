@@ -22,6 +22,7 @@ eval (And lhs rhs) = (eval lhs) && (eval rhs)
 eval (Or lhs rhs) = (eval lhs) || (eval rhs)
 eval (Eq lhs rhs) = (eval lhs) == (eval rhs)
 
+
 {-
 
     HW-3:
@@ -63,7 +64,7 @@ eval (Eq lhs rhs) = (eval lhs) == (eval rhs)
     (e) Implemente un probador de tautologias 'proof2' para proposiciones con dos variables:
        la funcion 'proof2 recibe un solo parametro de tipo Exp, aplicable a dos parametros
 
-        proof2 :: Exp -> Bool
+        proof2 :: (Exp -> Exp -> Exp) -> Bool
         proof2 exp = ...
 
     (f) ¡Utilice lo hecho en (e) para probar las leyes de De Morgan!
@@ -78,7 +79,19 @@ eval (Eq lhs rhs) = (eval lhs) == (eval rhs)
 
     (g) Repetir todo lo hecho en (e) y (f) pero para tres variables: 'proof3'
 
-        proof3 :: Exp -> Bool
+        proof3 :: (Exp -> Exp -> Exp -> Exp) -> Bool
         proof3 exp = ...
 
 -}
+
+exp2 x y = (And (Or x (Not y)) (Not x))
+dem2 x y = False -- implementar la ley de De Morgan en 2 variables
+
+proof2 :: (Exp -> Exp -> Exp) -> Bool
+proof2 f2 = False -- implementar probador
+
+exp3 x y z = And (exp2 x y) (Not z)
+dem3 x y z = False -- implementar la ley de De Morgan en 3 variables
+
+proof3 :: (Exp -> Exp -> Exp -> Exp) -> Bool
+proof3 f3 = False -- implementar probador
