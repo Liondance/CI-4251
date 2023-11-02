@@ -13,7 +13,7 @@
     2. No se asusten: esta es una tarea facil: por eso solo vale 10 puntos.
     Pero tienen que leer con cuidado las reglas y sugerencias dadas aqui.
     La explicacion es más larga de lo que yo quisiera, para que quede clara.
-    He notado que aun estan desarrollando su "intuicion computista".
+    He notado que aun estan desarrollando su "intuición computista".
 
     3. La hora de entrega es este domingo (5 de noviembre) a la medianoche.
     Queria darles esta tarea ayer en la noche y me he retrasado.
@@ -25,7 +25,7 @@
     pero no lo es. Sin embargo, lo repito, deben leer todo esto con cuidado.
     El espiritu esta tarea es:
     - hacerlos pensar (!) ... y divertirse creciendo su ambiente de programacion!
-    - desarrollar su intuicion acerca de la ingenieria de computacion
+    - desarrollar su intuición acerca de la ingenieria de computacion
     - darse cuenta del poder de componer abstracciones funcionales
     - liberarse (un poco) del apego al "azucar sintactico"
 
@@ -37,16 +37,16 @@
     Zilly
     =====
 
-    Zilly es el lenguaje de una maquina virtual hipotetica (todas lo son!) capaz 
-    de realizar operaciones aritmeticas sobre numeros enteros de cualquier tamano, 
-    es decir: 10 digitos, 100 digitos, 1000 digitos, ... en fin cualquier tamano!
+    Zilly es el lenguaje de una máquina virtual hipotética (todas lo son!) capaz 
+    de realizar operaciones aritmeticas sobre numeros enteros de cualquier tamaño, 
+    es decir: 10 dígitos, 100 dígitos, 1000 dígitos, ... en fin cualquier tamaño!
     Ademas, Zilly permite tener un numero arbitrario de variables enteras. 
 
     Como pueden imaginarse, el tipo 'entero' es un tipo fundamental en Zilly. 
-    El simbolo asociado a este tipo es Z: https://en.wikipedia.org/wiki/Integer
+    El símbolo asociado a este tipo es Z: https://en.wikipedia.org/wiki/Integer
     De hecho el nombre 'Zilly' se deriva del nombre de otro lenguaje: 'Lilly'.
 
-    más aun, Z es el *unico* tipo primitivo en Zilly, y lo vamos a emular asi:
+    más aun, Z es el *único* tipo primitivo en Zilly, y lo vamos a emular asi:
 -}
 
 type Z = Integer
@@ -80,14 +80,14 @@ type Z = Integer
 
         E ==> <n>               -- constantes enteras
         E ==> <symbol>          -- simbolos
-        E ==> \<symbol> -> E    -- abstraccion funcional ... Arriba Alonzo!
-        E ==> E E               -- aplicacion funcional
-        E ==> ifx E E E         -- expresion condicional
+        E ==> \<symbol> -> E    -- abstracción funcional ... Arriba Alonzo!
+        E ==> E E               -- aplicación funcional
+        E ==> ifx E E E         -- expresión condicional
 
     Concretamente (del punto de vista lexicografico), una constante entera <n>
-    es el digito 0 o un digito distinto de 0 seguido de cero o más digitos.
+    es el dígito 0 o un dígito distinto de 0 seguido de cero o más dígitos.
     Eso es todo. Noten que no mencionamos ningun "guion" ('-') o culebrita ('~').
-    Para obtener valores enteros negativos usamos una funcion que veremos luego.
+    Para obtener valores enteros negativos usamos una función que veremos luego.
     La sintaxis de expresiones no incluye ningun "azucar" de "operadores", i.e.
     no hay expresiones de la forma -E, E + E, E - E, E * E, ... no más azucar!
 
@@ -101,7 +101,7 @@ type Z = Integer
 
     La sintaxis de expresiones condicionales solo tiene estas diferencias:
     - las palabras reservadas 'then' y 'else' se omiten
-    - en vez de usar el simbolo reservado 'if' usamos 'ifx'
+    - en vez de usar el símbolo reservado 'if' usamos 'ifx'
 
     Noten que la condicion de 'ifx' es de tipo 'Z': no hay 'Bool' en Zilly.
     Solo tenemos numeros enteros y funciones. Donde sea necesario interpretar 
@@ -138,7 +138,7 @@ type Z = Integer
     En cambio, usar sintaxis de Haskell no bendecida, usar 'if' en lugar de 'ifx', 
     o usar funciones predefinidas en el preludio de Haskell si pervierte lo que
     queremos hacer: programar en Zilly, no en Haskell. Nos estamos aprovechando
-    de Haskell (descaradamente) para emular una maquina virtual de Zilly.
+    de Haskell (descaradamente) para emular una máquina virtual de Zilly.
     
     No hagan nada que eche a perder ese objetivo. No hagan trampa.
 
@@ -176,7 +176,7 @@ z b = if b then 1 else 0;
     Son constantes enteras, pero "meten la coba" de parecer booleanas.
 -}
 
--- conditional expression - expresion condicional
+-- conditional expression - expresión condicional
 ifx :: Z -> e -> e -> e
 ifx pred x y = if b pred then x else y
 
@@ -228,7 +228,7 @@ minus x y = x - y -- descaradamente ...
     (D) Es parte de la evaluacion implementar las funciones que no lo están
     (E) Y es parte de la evalucion extender la suite de prueba, sin exagerar
 
-    Ustedes son inteligentes: usen esta tarea para desarrollar su intuicion
+    Ustedes son inteligentes: usen esta tarea para desarrollar su intuición
     de ingenieria de software. Imaginense que usuarios finales, por ejemplo
     programadores de aplicaciones, van a usar lo que hicieron. Ustedes, los
     programadores de sistemas, deben ayudar a los "application programmers"
@@ -238,13 +238,13 @@ minus x y = x - y -- descaradamente ...
     extendiendo esta libreria. Haganle la vida más facil a ellos tambien,
     y al coordinador del laboratorio, escribiendo codigo claro.
 
-    Tip: si estan desarrollando una funcion g que depende de una funcion f,
+    Tip: si estan desarrollando una función g que depende de una función f,
     tiene sentido - para el desarrollo - que hagan trampa en la implementacion
     de f para probar a g. De esta manera se aseguran que cuando implementen a
     f, g va a funcionar. Si no logran terminar la tarea, es mucho mejor dejar
     algunas trampas "vivas" que dejar de implementar varias funciones debido 
     a las dependencias entre las funciones! Pero indiquen claramente cada
-    funcion que hace TRAMPA, con un comentario.
+    función que hace TRAMPA, con un comentario.
 
     ---
     [1] Evidencia: para que vean quien es Guy Steele. No recomiendo ver todo el
