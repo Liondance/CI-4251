@@ -1,0 +1,68 @@
+name:                Parsing
+version:             0.1.0.0
+github:              "initial-mockingbird/CI-4251"
+license:             NA
+author:              "Daniel Pinto"
+maintainer:          "Daniel.Andres.Pinto@gmail.com"
+copyright:           "2023 Daniel A. Pinto"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/CI4251#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- containers               # Maps, Sets, etc
+- parsec
+- mtl
+- transformers
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+  
+
+executables:
+  main:
+    main:                Main.hs
+    source-dirs:         app
+    other-modules: []
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -O2
+    - -main-is Main
+    dependencies:
+    - Parsing
+
+tests:
+  CI4251-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -O2
+    dependencies:
+    - Parsing
