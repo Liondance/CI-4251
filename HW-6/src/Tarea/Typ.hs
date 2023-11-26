@@ -11,7 +11,8 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
-
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Tarea.Typ where
 
 
@@ -22,16 +23,35 @@ import Control.Monad.Except
 import qualified Data.Map as M
 import Data.Map (Map)
 import Control.Applicative
-
--- import Data.Kind (Constraint, Type)
-
-
+import Data.String (IsString(..))
+import Control.Exception 
+import Data.Kind (Constraint, Type)
+import Control.Monad.Writer.Lazy
+import Control.Monad.Reader
 
 data Err = Err 
-  { errMsg    :: ErrMsg 
+  { errMsg    :: [Char] 
   , faultTerm :: Maybe Dynamic
   }
-type ErrMsg = String
+
+instance Show Err where
+  show (Err msg ft) = case ft of
+    Nothing -> msg
+    Just t  -> msg <> ". Faulty term: " <> show_dynamic t
+
+instance Exception Err 
+
+newtype ErrMsg = ErrMsg String 
+  deriving newtype (Eq,Ord,IsString,Semigroup,Monoid,Show)
+instance Exception ErrMsg 
+
+customErrException :: String -> SomeException
+customErrException s = toException $ ErrMsg s
+
+errWithTermException :: Maybe Dynamic -> [Char] ->  SomeException
+errWithTermException ft errMsg  = toException $ Err errMsg ft
+
+
 type Env a = Map String a
 type EnvD  = Map String Dynamic
 type TypeCheck repr = (ATypeCheck repr, BTypeCheck repr, ITypeCheck repr, TTypeCheck repr)
@@ -180,14 +200,14 @@ safe_cast :: TQ a -> a -> TQ b -> Maybe b
 safe_cast ta a tb = runIdentity <$> safe_gcast ta (Identity a) tb
 
 
-safe_gcast' :: MonadError Err c => Dynamic -> TQ a -> c a -> TQ b -> c b
+safe_gcast' :: MonadError IOException c => Dynamic -> TQ a -> c a -> TQ b -> c b
 safe_gcast' d (TQ ta) ca (TQ tn) = case (ta,tn) of
   (TCOPY (ShowT sta) (ta'), TCOPY (ShowT stn) (tn') ) ->
     let errMsg = concat ["Actual type: ", show sta, ". Expected type: ", show stn]
-    in maybe (throwError $ Err errMsg (Just d)) id $ safe_gcast ta' ca tn'  
+    in maybe (throwError . userError  . show  $ Err errMsg (Just d)) id $ safe_gcast ta' ca tn'  
 
 
-safe_cast' :: MonadError Err c => Dynamic -> TQ a -> a -> TQ b -> c b
+safe_cast' :: MonadError IOException c => Dynamic -> TQ a -> a -> TQ b -> c b
 safe_cast' d ta a tb = safe_gcast' d ta (pure a) tb
 
 data Dynamic = forall t. Dynamic (TQ t) t
@@ -196,7 +216,7 @@ data Dynamic = forall t. Dynamic (TQ t) t
 show_dynamic :: Dynamic -> String
 show_dynamic (Dynamic t x) = show_as t x
 
-class (ArithmeticSYM repr, MonadError Err repr) => ATypeCheck repr where
+class (ArithmeticSYM repr, MonadError IOException repr) => ATypeCheck repr where
   tcLit :: Dynamic -> repr Float
   tcLit d@(Dynamic tr a) = safe_cast' d tr a tFloat >>= asLit
   tcPlus :: repr Float -> Dynamic -> repr Float
@@ -219,7 +239,7 @@ class (ArithmeticSYM repr, MonadError Err repr) => ATypeCheck repr where
   tcFactorial  = undefined
 
 
-class (BooleanSYM repr, MonadError Err repr) => BTypeCheck repr where
+class (BooleanSYM repr, MonadError IOException repr) => BTypeCheck repr where
   tcBool :: Dynamic -> repr Bool
   tcBool d@(Dynamic tr a) = safe_cast' d tr a tBool >>= boBool
   tcAnd :: repr Bool -> Dynamic -> repr Bool
@@ -229,68 +249,106 @@ class (BooleanSYM repr, MonadError Err repr) => BTypeCheck repr where
   tcOr :: repr Bool -> Dynamic -> repr Bool
   tcOr = undefined
 
--- Are these signatures enough? 
-class (IfSYM repr, MonadError Err repr) => ITypeCheck repr where
+
+class (IfSYM repr, MonadError IOException repr) => ITypeCheck repr where
   rcIf :: repr Bool -> repr a -> repr a -> repr a
 
-class (TernarySYM repr, MonadError Err repr) => TTypeCheck repr where
+class (TernarySYM repr, MonadError IOException repr) => TTypeCheck repr where
   rcTern ::  repr Float -> repr Float -> repr Float  -> repr Float 
 
-instance Monad m => ArithmeticSYM (StateT EnvD m) where
-  asLit  = pure
-  asPlus = liftA2 (+)
-  asMul  = liftA2 (*)
+
+newtype EvalRepr a = EvalRepr {runEvalRepr :: IO a}
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadError IOException)
+
+instance ArithmeticSYM (EvalRepr) where
+  asLit       = pure
+  asPlus      = liftA2 (+)
+  asMul       = undefined
   asPlusPlus  = undefined
   asUMinus    = undefined
   asFactorial = undefined
   asPower     = undefined
 
-instance Monad m => BooleanSYM (StateT EnvD m) where
+instance BooleanSYM (EvalRepr) where
   boBool = pure
-  boAnd = liftA2 (&&)
-  boOr  = undefined
+  boAnd  = undefined
+  boOr   = undefined
 
-instance Monad m => IfSYM (StateT EnvD m) where
+instance IfSYM (EvalRepr) where
   ifIf = undefined
 
-instance Monad m => TernarySYM (StateT EnvD m) where
+instance TernarySYM (EvalRepr) where
   teTern = undefined
 
-instance (MonadError Err m) =>  ATypeCheck  (StateT EnvD m)
-instance (MonadError Err m) =>  BTypeCheck  (StateT EnvD m)
-instance (MonadError Err m) =>  ITypeCheck  (StateT EnvD m)
-instance (MonadError Err m) =>  TTypeCheck  (StateT EnvD m)
+instance (Monad m, BooleanSYM m) => BooleanSYM (StateT EnvD m) where
+  boBool = undefined
+  boAnd  = undefined
+  boOr   = undefined
+
+
+instance (Monad m, ArithmeticSYM m) => ArithmeticSYM (StateT EnvD m) where
+  asLit  = lift . asLit @m
+  asPlus a b  = StateT $ \s -> do 
+    (a',s')  <- runStateT a s  
+    (b',s'') <- runStateT b s' -- is it ok to pass s' instead of s? when? why? does it matter in this case?
+    (,s'') <$> asPlus @m (pure a') (pure b') -- same question, is it ok to return s''?
+  asMul       = undefined
+  asPlusPlus  = undefined
+  asUMinus    = undefined
+  asFactorial = undefined
+  asPower     = undefined
+
+instance (Monad m, IfSYM m) => IfSYM (StateT EnvD  m) where
+  ifIf = undefined
+
+instance (Monad m, TernarySYM m) => TernarySYM (StateT EnvD  m) where
+  teTern = undefined
+
+instance (MonadError IOException m, ArithmeticSYM m) =>  ATypeCheck  (StateT EnvD  m)
+instance (MonadError IOException m, BooleanSYM m)    =>  BTypeCheck  (StateT EnvD  m)
+instance (MonadError IOException m, IfSYM m )        =>  ITypeCheck  (StateT EnvD  m)
+instance (MonadError IOException m, TernarySYM m)    =>  TTypeCheck  (StateT EnvD  m)
 
 
 -- Please, make a pretty printer that:
 -- - Deals with precedence
 -- - Deals with associativity
 -- You will need to modify the Ctx data type.
-newtype NoParensPrinter a = NoParensPrinter (Identity a)
-  deriving newtype (Eq, Ord, Functor, Semigroup, Monoid, IsString, Applicative, Monad)
-  deriving stock (Show) 
+newtype NoParensPrinter a = NoParensPrinter {runNoParensPrinter :: ReaderT Ctx (StateT String IO) a}
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadError IOException, MonadReader Ctx, MonadState String)
 
--- Fill with what you need
-data Ctx 
+data Ctx = Ctx Float 
 
-instance ArithmeticSYM (Ctx ->  (NoParensPrinter String)) where
-  asLit       = undefined
-  asPlus      = undefined
+getPrecedence :: Ctx -> Float
+getPrecedence (Ctx n) = n
+
+instance ArithmeticSYM (NoParensPrinter) where
+  asLit    x  = put (show x) *> pure x 
+  asPlus  ma mb = do
+    pPrec <- asks getPrecedence
+    a  <- ma 
+    sa <- get 
+    b  <- mb
+    sb <- get 
+    let sc = sa <> " + " <> sb 
+    if pPrec < 2 then put $ "(" <> sc <> ")" else put sc
+    pure $ a + b
   asMinus     = undefined
-  asMul       = undefined
+  asMul   ma mb    = undefined
   asPower     = undefined
   asPlusPlus  = undefined
   asUMinus    = undefined
   asFactorial = undefined
 
-instance BooleanSYM (Ctx ->  (NoParensPrinter String)) where
+instance  BooleanSYM (NoParensPrinter) where
   boBool = undefined
   boAnd  = undefined
   boOr   = undefined
 
 
-instance IfSYM (Ctx ->  (NoParensPrinter String)) where
+instance IfSYM (NoParensPrinter) where
   ifIf = undefined
 
-instance TernarySYM (Ctx ->  (NoParensPrinter String)) where 
+instance TernarySYM (NoParensPrinter) where 
   teTern = undefined
+

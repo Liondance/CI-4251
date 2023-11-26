@@ -14,7 +14,7 @@
 
 module Tarea.Parser where
 
-
+import Data.Proxy
 import Tarea.Typ
 import Text.Parsec hiding ((<|>),many)
 import Data.Functor
@@ -33,6 +33,7 @@ import Control.Monad.Except
 import Data.Bifunctor
 import Data.Kind (Constraint, Type)
 import Control.Monad.State.Lazy
+import Control.Exception
 
 type Parser m a =  ParsecT [Char] () m a
 
@@ -40,7 +41,7 @@ instance (a ~ String, Monad m) => IsString (ParsecT [Char] u m a) where
   fromString s = string' s <* spaces
 
 
-type App env a = ReaderT (Env env) (Either ErrMsg ) a
+
 
 -------------------------
 -- Utilities
@@ -50,8 +51,11 @@ askVar :: MonadState EnvD m => [Char] -> m (Maybe Dynamic)
 askVar = gets . M.lookup 
 
 
-askVar' :: (MonadState EnvD m, MonadError Err m) => [Char] -> m Dynamic
-askVar' v = askVar v >>= maybe (throwError $ flip Err Nothing $ "Variable: " <> show v <> " not found in the environment")  pure
+askVar' :: (MonadState EnvD m, MonadError IOException m) => [Char] -> m (Dynamic)
+askVar' v = askVar v >>= flip maybe pure
+  (throwError . userError  . show $ Err errMSG Nothing ) 
+  where 
+    errMSG = "Variable: " <> show v <> " not found in the environment"
 
 
 -- Modify the parser so it also accepts:
@@ -75,7 +79,7 @@ pVarName = lexeme $ (:) <$> asum [char '_', letter] <*> many (alphaNum <|> char 
 pDF :: Monad m => Parser m Dynamic
 pDF = Dynamic tFloat <$> lexeme pFloat
 
-pVar :: (MonadState EnvD m, MonadError Err m) => Parser m Dynamic
+pVar :: (MonadState EnvD m, MonadError IOException m) => Parser m Dynamic
 pVar = pVarName >>= askVar'
 
 pBool :: Monad m => Parser m Bool
@@ -105,11 +109,11 @@ pBIL :: Monad m => (b -> Dynamic) -> (Dynamic -> m b) -> [Parser m (m b -> Dynam
 pBIL back f infixList next = undefined
 
 
-pIf :: (MonadState EnvD m, MonadError Err m) => Parser m Bool -> Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic
+pIf :: (MonadState EnvD m, MonadError IOException m) => Parser m Bool -> Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic
 pIf pb ptrue pfalse = (\b x y -> if b then x else y) <$> ("if" *> pb) <*> ("then" *> ptrue) <*> ("else" *> pfalse)
 
 
-pTern :: (MonadState EnvD m, MonadError Err m) => Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic
+pTern :: (MonadState EnvD m, MonadError IOException m) => Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic
 pTern pA pB pC = parens $ (\a b c -> c) <$> (pA <* "<>") <*> (pB <* "#") <*> pC 
 
 
@@ -117,9 +121,11 @@ pTern pA pB pC = parens $ (\a b c -> c) <$> (pA <* "<>") <*> (pB <* "#") <*> pC
 {-
 should parse EVERY expression
 -}
-pExpr' :: (MonadState EnvD m, MonadError Err m, TypeCheck m) => Parser m Dynamic
-pExpr' = undefined
-
+pExpr' :: forall m. (MonadState EnvD m, MonadError IOException m, TypeCheck m) => Parser m Dynamic
+pExpr' = term
+  where
+    term :: Parser m Dynamic
+    term = pTern pExpr' pExpr' pExpr'  <|> parens pExpr' <|> pDF <|> pDB <|> pIf pBool pExpr' pExpr' <|> pVar 
 
 class MonadIO m => Actions m where
   -- `<expr> ; <expr>`
@@ -140,13 +146,13 @@ should parse:
 - .q quit
 - .p print environment variables
 -}
-pAction :: (MonadState EnvD m, MonadError Err m, TypeCheck m, MonadIO m) => Parser m ()
+pAction :: (MonadState EnvD m, MonadError IOException m, TypeCheck m, MonadIO m) => Parser m ()
 pAction = pExpr' >>= (liftIO . putStrLn . show_dynamic)
 
-pSeq :: (MonadState EnvD m, MonadError Err m, TypeCheck m, MonadIO m) => Parser m ()
+pSeq :: (MonadState EnvD m, MonadError IOException m, TypeCheck m, MonadIO m) => Parser m ()
 pSeq = undefined
 
-pAssign :: (MonadState EnvD m, MonadError Err m, TypeCheck m, MonadIO m) => Parser m ()
+pAssign :: (MonadState EnvD m, MonadError IOException m, TypeCheck m, MonadIO m) => Parser m ()
 pAssign = undefined
 
 pQuit :: MonadIO m => Parser m ()
@@ -159,30 +165,42 @@ pPrint = undefined
 fully :: Monad m => Parser m a -> Parser m a
 fully p = spaces *> p <* eof 
 
-parse' :: EnvD -> [Char] -> IO EnvD
-parse' env s  = rex' 
+parse' :: forall m. (ArithmeticSYM m, BooleanSYM m, IfSYM m, TernarySYM m, MonadError IOException m, MonadIO m)
+  => EnvD -> [Char] ->  m EnvD
+parse' env s  = rex 
   where
 
-    rp :: StateT EnvD (ExceptT Err IO) (Either ParseError ())
+
+    rp :: StateT EnvD m (Either ParseError ())
     rp = runParserT (fully pAction) () "" s 
 
-    rr :: ExceptT Err IO (Either ParseError (),EnvD)
-    rr = runStateT  rp env
+    rw :: m (Either ParseError (),EnvD)
+    rw = runStateT  rp env
 
-    rex :: IO (Either Err (Either ParseError (),EnvD))
-    rex = runExceptT rr
-
-    rex' :: IO EnvD
-    rex' = rex >>= \case
-      Left e                 -> putStrLn (errMsg e) $> env
-      Right (Left e',_)      -> print e' $> env
-      Right (Right (), env') -> pure env'
+    rex :: m EnvD
+    rex = rw >>= \case
+      (Left e,env') -> liftIO (print e) $> env -- does it matter which env do we choose here? why? which is the correct one?
+      (Right _, env') -> pure env'
         
 
-repl :: IO ()
-repl = do 
+repl :: forall m. (ArithmeticSYM m, BooleanSYM m, IfSYM m, TernarySYM m, MonadError IOException m, MonadIO m)
+  => (m () -> IO ()) -> IO ()
+repl run = do 
   hSetBuffering stdout NoBuffering
-  let f env = putStr ">> " >> getLine >>= parse' env >>= f
-  f M.empty
+  let f env = liftIO (putStr ">> " >> getLine) >>= parse' env >>= f
+  run $ f M.empty 
+
+
+replE :: IO ()
+replE = repl runner
+  where 
+  runner :: EvalRepr () -> IO ()
+  runner = runEvalRepr
+
+replS :: IO ()
+replS = repl runner
+  where
+    runner :: NoParensPrinter () -> IO ()
+    runner = (\(_,a) -> putStrLn a)  <=< flip runStateT "" .  flip runReaderT (Ctx $ -1) . runNoParensPrinter 
 
   
