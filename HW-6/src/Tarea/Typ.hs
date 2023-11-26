@@ -260,3 +260,37 @@ instance (MonadError Err m) =>  ATypeCheck  (StateT EnvD m)
 instance (MonadError Err m) =>  BTypeCheck  (StateT EnvD m)
 instance (MonadError Err m) =>  ITypeCheck  (StateT EnvD m)
 instance (MonadError Err m) =>  TTypeCheck  (StateT EnvD m)
+
+
+-- Please, make a pretty printer that:
+-- - Deals with precedence
+-- - Deals with associativity
+-- You will need to modify the Ctx data type.
+newtype NoParensPrinter a = NoParensPrinter (Identity a)
+  deriving newtype (Eq, Ord, Functor, Semigroup, Monoid, IsString, Applicative, Monad)
+  deriving stock (Show) 
+
+-- Fill with what you need
+data Ctx 
+
+instance ArithmeticSYM (Ctx ->  (NoParensPrinter String)) where
+  asLit       = undefined
+  asPlus      = undefined
+  asMinus     = undefined
+  asMul       = undefined
+  asPower     = undefined
+  asPlusPlus  = undefined
+  asUMinus    = undefined
+  asFactorial = undefined
+
+instance BooleanSYM (Ctx ->  (NoParensPrinter String)) where
+  boBool = undefined
+  boAnd  = undefined
+  boOr   = undefined
+
+
+instance IfSYM (Ctx ->  (NoParensPrinter String)) where
+  ifIf = undefined
+
+instance TernarySYM (Ctx ->  (NoParensPrinter String)) where 
+  teTern = undefined
