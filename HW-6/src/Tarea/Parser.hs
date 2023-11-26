@@ -110,11 +110,11 @@ pBIL back f infixList next = undefined
 
 
 pIf :: (MonadState EnvD m, MonadError IOException m) => Parser m Bool -> Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic
-pIf pb ptrue pfalse = (\b x y -> if b then x else y) <$> ("if" *> pb) <*> ("then" *> ptrue) <*> ("else" *> pfalse)
+pIf pb ptrue pfalse = undefined
 
 
 pTern :: (MonadState EnvD m, MonadError IOException m) => Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic
-pTern pA pB pC = parens $ (\a b c -> c) <$> (pA <* "<>") <*> (pB <* "#") <*> pC 
+pTern pA pB pC = undefined
 
 
 
