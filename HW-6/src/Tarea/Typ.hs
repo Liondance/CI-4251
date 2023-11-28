@@ -325,6 +325,7 @@ getPrecedence (Ctx n) = n
 instance ArithmeticSYM (NoParensPrinter) where
   asLit    x  = put (show x) *> pure x 
   asPlus  ma mb = do
+    -- SOLO FUNCIONA CON PRECEDENCIA, NO ASOCIATIVIDAD. POR FAVOR MODIFICAR. EJEMPLO SOLO ILUSTRATIVO.
     pPrec <- asks getPrecedence
     a  <- ma 
     sa <- get 

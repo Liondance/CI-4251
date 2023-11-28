@@ -108,11 +108,11 @@ pBinaryInfixL' f infixList next = infixl1 f next $ asum infixList
 pBIL :: Monad m => (b -> Dynamic) -> (Dynamic -> m b) -> [Parser m (m b -> Dynamic -> m b)] -> Parser m Dynamic -> Parser m Dynamic
 pBIL back f infixList next = undefined
 
-
+-- PUEDE NO FUNCIONAR DEPENDIENDO DE COMO TRABAJEN LO DEMAS
 pIf :: (MonadState EnvD m, MonadError IOException m) => Parser m Bool -> Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic
 pIf pb ptrue pfalse = undefined
 
-
+-- PUEDE NO FUNCIONAR DEPENDIENDO DE COMO TRABAJEN LO DEMAS
 pTern :: (MonadState EnvD m, MonadError IOException m) => Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic -> Parser m Dynamic
 pTern pA pB pC = undefined
 
